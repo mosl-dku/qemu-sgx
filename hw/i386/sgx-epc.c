@@ -225,6 +225,17 @@ out:
     return err != NULL ? -1 : 0;
 }
 
+static const VMStateDescription vmstate_epc = {
+	.name = "sgx-epc",
+	.version_id = 3,
+	.minimum_version_id = 3,
+	.fields = (VMStateField[]) {
+		VMSTATE_UINT64(base, SGXEPCState),
+		VMSTATE_UINT64(size, SGXEPCState),
+		VMSTATE_END_OF_LIST()
+	},
+};
+
 void pc_machine_init_sgx_epc(PCMachineState *pcms)
 {
     SGXEPCState *sgx_epc;
@@ -241,6 +252,7 @@ void pc_machine_init_sgx_epc(PCMachineState *pcms)
     memory_region_init(&sgx_epc->mr, OBJECT(pcms), "sgx-epc", UINT64_MAX);
     memory_region_add_subregion(get_system_memory(), sgx_epc->base,
                                 &sgx_epc->mr);
+    vmstate_register(NULL, 0, &vmstate_epc, sgx_epc);
 
     qemu_opts_foreach(qemu_find_opts("sgx-epc"), sgx_epc_init_func, NULL,
                       &error_fatal);
