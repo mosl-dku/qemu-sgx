@@ -29,6 +29,17 @@ static Property sgx_epc_properties[] = {
     DEFINE_PROP_END_OF_LIST(),
 };
 
+static const VMStateDescription vmstate_epc = {
+	.name = "sgx-epc",
+	.version_id = 3,
+	.minimum_version_id = 3,
+	.fields = (VMStateField[]) {
+		VMSTATE_UINT64(base, SGXEPCState),
+		VMSTATE_UINT64(size, SGXEPCState),
+		VMSTATE_END_OF_LIST()
+	},
+};
+
 static void sgx_epc_get_size(Object *obj, Visitor *v, const char *name,
                              void *opaque, Error **errp)
 {
@@ -142,6 +153,7 @@ static void sgx_epc_class_init(ObjectClass *oc, void *data)
     dc->unrealize = sgx_epc_unrealize;
     dc->props = sgx_epc_properties;
     dc->desc = "SGX EPC section";
+    dc->vmsd = &vmstate_epc;
 
     mdc->get_addr = sgx_epc_md_get_addr;
     mdc->set_addr = sgx_epc_md_set_addr;
@@ -224,17 +236,6 @@ out:
     object_unref(obj);
     return err != NULL ? -1 : 0;
 }
-
-static const VMStateDescription vmstate_epc = {
-	.name = "sgx-epc",
-	.version_id = 3,
-	.minimum_version_id = 3,
-	.fields = (VMStateField[]) {
-		VMSTATE_UINT64(base, SGXEPCState),
-		VMSTATE_UINT64(size, SGXEPCState),
-		VMSTATE_END_OF_LIST()
-	},
-};
 
 void pc_machine_init_sgx_epc(PCMachineState *pcms)
 {
