@@ -18,6 +18,7 @@
 #include "sysemu/hostmem.h"
 
 #include <asm/sgx.h>
+#include <errno.h>
 
 #define TYPE_MEMORY_BACKEND_EPC "memory-backend-epc"
 
@@ -103,6 +104,9 @@ static void register_types(void)
         close(fd);
 
         type_register_static(&sgx_epc_backed_info);
+        printf("type_register_static(&sgx_epc_backed_info);\n");
+    } else {
+	    perror("sgx_virt open");
     }
 #endif
 }

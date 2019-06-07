@@ -593,7 +593,7 @@ Object *object_new_with_propv(const char *typename,
 
     klass = object_class_by_name(typename);
     if (!klass) {
-        error_setg(errp, "invalid object type: %s", typename);
+        error_setg(errp, "invalid object type: %s_qom_obj", typename);
         return NULL;
     }
 

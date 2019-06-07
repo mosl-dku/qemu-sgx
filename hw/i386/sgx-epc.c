@@ -29,8 +29,15 @@ static Property sgx_epc_properties[] = {
     DEFINE_PROP_END_OF_LIST(),
 };
 
+static bool sgx_epc_needed(void *opaque)
+{
+    return true;
+}
+
+
 static const VMStateDescription vmstate_epc = {
 	.name = "sgx-epc",
+	.needed = sgx_epc_needed,
 	.version_id = 3,
 	.minimum_version_id = 3,
 	.fields = (VMStateField[]) {
