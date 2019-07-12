@@ -34,12 +34,20 @@ static bool sgx_epc_needed(void *opaque)
     return true;
 }
 
+static int sgx_epc_pre_save(void *opaque)
+{
+	//kvm_guest_epc_stop();
+	int epc_state;
+	kvm_vm_ioctl(kvm_state, KVM_EPC_STOP, &epc_state);
+	return 0;
+}
 
 static const VMStateDescription vmstate_epc = {
 	.name = "sgx-epc",
 	.needed = sgx_epc_needed,
 	.version_id = 3,
 	.minimum_version_id = 3,
+	.pre_save = sgx_epc_pre_save,
 	.fields = (VMStateField[]) {
 		VMSTATE_UINT64(base, SGXEPCState),
 		VMSTATE_UINT64(size, SGXEPCState),

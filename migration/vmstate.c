@@ -319,6 +319,7 @@ bool vmstate_save_needed(const VMStateDescription *vmsd, void *opaque)
 int vmstate_save_state(QEMUFile *f, const VMStateDescription *vmsd,
                        void *opaque, QJSON *vmdesc_id)
 {
+// seehwan where to save vm state of each device
     return vmstate_save_state_v(f, vmsd, opaque, vmdesc_id, vmsd->version_id);
 }
 
