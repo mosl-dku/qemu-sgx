@@ -36,6 +36,15 @@ static bool sgx_epc_needed(void *opaque)
 
 static int sgx_epc_pre_save(void *opaque)
 {
+	// stop all vcpus, except
+	// single core that would save the sgx states
+	// Then, save the enclave state from sgx inside (lifecycle)
+	// inject virq, let vcpu triggers sgx lifecycle callback fn
+	// onMigrate()
+
+	//cpu_disable_ticks();
+	//pause_all_vcpus();
+	//cpu_resume(first_cpu);
 	//kvm_guest_epc_stop();
 	int epc_state;
 	kvm_vm_ioctl(kvm_state, KVM_EPC_STOP, &epc_state);
