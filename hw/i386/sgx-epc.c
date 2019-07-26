@@ -21,6 +21,8 @@
 #include "qemu/option.h"
 #include "qemu/units.h"
 #include "target/i386/cpu.h"
+#include "sysemu/cpus.h"
+#include "sysemu/kvm.h"
 
 static Property sgx_epc_properties[] = {
     DEFINE_PROP_UINT64(SGX_EPC_ADDR_PROP, SGXEPCDevice, addr, 0),
@@ -42,12 +44,12 @@ static int sgx_epc_pre_save(void *opaque)
 	// inject virq, let vcpu triggers sgx lifecycle callback fn
 	// onMigrate()
 
-	//cpu_disable_ticks();
-	//pause_all_vcpus();
-	//cpu_resume(first_cpu);
+	cpu_disable_ticks();
+	pause_all_vcpus();
+	cpu_resume(first_cpu);
 	//kvm_guest_epc_stop();
 	int epc_state;
-	kvm_vm_ioctl(kvm_state, KVM_EPC_STOP, &epc_state);
+	kvm_vcpu_ioctl(first_cpu, KVM_EPC_STOP, &epc_state);
 	return 0;
 }
 
