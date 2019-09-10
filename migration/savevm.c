@@ -756,6 +756,7 @@ static int vmstate_load(QEMUFile *f, SaveStateEntry *se)
     if (!se->vmsd) {         /* Old style */
         return se->ops->load_state(f, se->opaque, se->load_version_id);
     }
+    printf("migration/savevm.c --- vmstate_load\n");
     return vmstate_load_state(f, se->vmsd, se->opaque, se->load_version_id);
 }
 

@@ -82,6 +82,7 @@ int vmstate_load_state(QEMUFile *f, const VMStateDescription *vmsd,
     const VMStateField *field = vmsd->fields;
     int ret = 0;
 
+    printf("migration/vmstate.c --- vmstate_load_state");
     trace_vmstate_load_state(vmsd->name, version_id);
     if (version_id > vmsd->version_id) {
         error_report("%s: incoming version_id %d is too new "

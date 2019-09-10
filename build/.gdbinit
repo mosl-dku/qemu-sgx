@@ -1,0 +1,1 @@
+/home/mobileos/qemu-sgx/.gdbinit
