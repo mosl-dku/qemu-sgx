@@ -28,6 +28,8 @@
 
 static Property sgx_epc_properties[] = {
     DEFINE_PROP_UINT64(SGX_EPC_ADDR_PROP, SGXEPCDevice, addr, 0),
+    DEFINE_PROP_LINK(SGX_EPC_MIGPORT_PROP, SGXEPCDevice, port,
+					 TYPE_VIRTIO_MIGRATION_SERIAL_PORT, VirtIOSerialPort *),
     DEFINE_PROP_LINK(SGX_EPC_MEMDEV_PROP, SGXEPCDevice, hostmem,
                      TYPE_MEMORY_BACKEND, HostMemoryBackend *),
     DEFINE_PROP_END_OF_LIST(),
@@ -93,9 +95,9 @@ static void sgx_epc_realize(DeviceState *dev, Error **errp)
     MemoryDeviceState *md = MEMORY_DEVICE(dev);
     SGXEPCState *sgx_epc = pcms->sgx_epc;
     SGXEPCDevice *epc_dev = SGX_EPC(dev);
-	VirtIOSerialPort *port = find_virtio_serialport_by_name(serialport_name);
+	VirtIOSerialPort *port = g_mig_port;
 	if (port == NULL) {
-		printf("find_virtio_serialport_by_name: %s\n", serialport_name);
+		printf("find_virtio_serialport_by_name: %s failed\n", serialport_name);
 	}
 
     if (pcms->boot_cpus != 0) {
@@ -320,10 +322,14 @@ static QemuOptsList sgx_epc_opts = {
             .type = QEMU_OPT_STRING,
             .help = "SGX EPC section ID",
         },{
+            .name = "mig_port",
+            .type = QEMU_OPT_STRING,
+            .help = "Migration port",
+        },{
             .name = "memdev",
             .type = QEMU_OPT_STRING,
             .help = "memory object backend",
-        },
+       },
         { /* end of list */ }
     },
 };

@@ -26,7 +26,7 @@
 #define SGX_EPC_ADDR_PROP "addr"
 #define SGX_EPC_SIZE_PROP "size"
 #define SGX_EPC_MEMDEV_PROP "memdev"
-
+#define SGX_EPC_MIGPORT_PROP "mig_port"
 /**
  * SGXEPCDevice:
  * @addr: starting guest physical address, where @SGXEPCDevice is mapped.
