@@ -197,6 +197,12 @@ struct VirtIOSerial {
  * Open a connection to the port
  *   Returns 0 on success (always).
  */
+VirtIOSerialPort *find_virtio_serialport_by_name(char *name);
+
+/*
+ * Open a connection to the port
+ *   Returns 0 on success (always).
+ */
 int virtio_serial_open(VirtIOSerialPort *port);
 
 /*

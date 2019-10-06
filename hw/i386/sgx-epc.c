@@ -11,7 +11,6 @@
  */
 #include "qemu/osdep.h"
 #include "hw/i386/pc.h"
-#include "hw/i386/sgx-epc.h"
 #include "hw/mem/memory-device.h"
 #include "monitor/qdev.h"
 #include "qapi/error.h"
@@ -23,6 +22,9 @@
 #include "target/i386/cpu.h"
 #include "sysemu/cpus.h"
 #include "sysemu/kvm.h"
+#include "hw/virtio/virtio-serial.h"
+
+#include "hw/i386/sgx-epc.h"
 
 static Property sgx_epc_properties[] = {
     DEFINE_PROP_UINT64(SGX_EPC_ADDR_PROP, SGXEPCDevice, addr, 0),
@@ -38,18 +40,15 @@ static bool sgx_epc_needed(void *opaque)
 
 static int sgx_epc_pre_save(void *opaque)
 {
-	// stop all vcpus, except
-	// single core that would save the sgx states
-	// Then, save the enclave state from sgx inside (lifecycle)
-	// inject virq, let vcpu triggers sgx lifecycle callback fn
-	// onMigrate()
+	char buf[] = "SGXEPC_MIGRATION_REQUEST";
+	void *pbuf = buf;
+	SGXEPCState *sgx_epc = opaque;
+	SGXEPCDevice *epc_dev = sgx_epc->sections[0];
+	size_t ret = virtio_serial_guest_ready(epc_dev->port);
 
-	cpu_disable_ticks();
-	pause_all_vcpus();
-	cpu_resume(first_cpu);
-	//kvm_guest_epc_stop();
-	int epc_state;
-	kvm_vcpu_ioctl(first_cpu, KVM_EPC_STOP, &epc_state);
+	if (ret > 0) {
+		virtio_serial_write(epc_dev->port, pbuf, sizeof(buf));
+	}
 	return 0;
 }
 
@@ -89,10 +88,15 @@ static void sgx_epc_init(Object *obj)
 
 static void sgx_epc_realize(DeviceState *dev, Error **errp)
 {
+	char serialport_name[] = "vsgxer.migration.0";
     PCMachineState *pcms = PC_MACHINE(qdev_get_machine());
     MemoryDeviceState *md = MEMORY_DEVICE(dev);
     SGXEPCState *sgx_epc = pcms->sgx_epc;
-    SGXEPCDevice *epc = SGX_EPC(dev);
+    SGXEPCDevice *epc_dev = SGX_EPC(dev);
+	VirtIOSerialPort *port = find_virtio_serialport_by_name(serialport_name);
+	if (port == NULL) {
+		printf("find_virtio_serialport_by_name: %s\n", serialport_name);
+	}
 
     if (pcms->boot_cpus != 0) {
         error_setg(errp,
@@ -100,42 +104,54 @@ static void sgx_epc_realize(DeviceState *dev, Error **errp)
         return;
     }
 
-    if (!epc->hostmem) {
+    if (!epc_dev->hostmem) {
         error_setg(errp, "'" SGX_EPC_MEMDEV_PROP "' property is not set");
         return;
-    } else if (host_memory_backend_is_mapped(epc->hostmem)) {
-        char *path = object_get_canonical_path_component(OBJECT(epc->hostmem));
+    } else if (host_memory_backend_is_mapped(epc_dev->hostmem)) {
+        char *path = object_get_canonical_path_component(OBJECT(epc_dev->hostmem));
         error_setg(errp, "can't use already busy memdev: %s", path);
         g_free(path);
         return;
     }
 
-    epc->addr = sgx_epc->base + sgx_epc->size;
+    epc_dev->addr = sgx_epc->base + sgx_epc->size;
 
-    memory_region_add_subregion(&sgx_epc->mr, epc->addr - sgx_epc->base,
-                                host_memory_backend_get_memory(epc->hostmem));
+    memory_region_add_subregion(&sgx_epc->mr, epc_dev->addr - sgx_epc->base,
+                                host_memory_backend_get_memory(epc_dev->hostmem));
 
-    host_memory_backend_set_mapped(epc->hostmem, true);
+    host_memory_backend_set_mapped(epc_dev->hostmem, true);
 
     sgx_epc->sections = g_renew(SGXEPCDevice *, sgx_epc->sections,
                                 sgx_epc->nr_sections + 1);
-    sgx_epc->sections[sgx_epc->nr_sections++] = epc;
+    sgx_epc->sections[sgx_epc->nr_sections++] = epc_dev;
 
     sgx_epc->size += memory_device_get_region_size(md, errp);
+
+	// opening file for sgx-epc migration
+	if (port != NULL) {
+		int ret = virtio_serial_open(port);
+		if (ret == 0) {
+			epc_dev->port = port;
+		} else {
+			error_setg(errp,
+				"'" TYPE_SGX_EPC "' can't open guest comm port");
+		}
+	}
 }
 
 static void sgx_epc_unrealize(DeviceState *dev, Error **errp)
 {
-    SGXEPCDevice *epc = SGX_EPC(dev);
+    SGXEPCDevice *epc_dev = SGX_EPC(dev);
 
-    host_memory_backend_set_mapped(epc->hostmem, false);
+    host_memory_backend_set_mapped(epc_dev->hostmem, false);
+	virtio_serial_close(epc_dev->port);
 }
 
 static uint64_t sgx_epc_md_get_addr(const MemoryDeviceState *md)
 {
-    const SGXEPCDevice *epc = SGX_EPC(md);
+    const SGXEPCDevice *epc_dev = SGX_EPC(md);
 
-    return epc->addr;
+    return epc_dev->addr;
 }
 
 static void sgx_epc_md_set_addr(MemoryDeviceState *md, uint64_t addr,
@@ -153,14 +169,14 @@ static uint64_t sgx_epc_md_get_plugged_size(const MemoryDeviceState *md,
 static MemoryRegion *sgx_epc_md_get_memory_region(MemoryDeviceState *md,
                                                   Error **errp)
 {
-    SGXEPCDevice *epc = SGX_EPC(md);
+    SGXEPCDevice *epc_dev = SGX_EPC(md);
 
-    if (!epc->hostmem) {
+    if (!epc_dev->hostmem) {
         error_setg(errp, "'" SGX_EPC_MEMDEV_PROP "' property must be set");
         return NULL;
     }
 
-    return host_memory_backend_get_memory(epc->hostmem);
+    return host_memory_backend_get_memory(epc_dev->hostmem);
 }
 
 static void sgx_epc_md_fill_device_info(const MemoryDeviceState *md,
@@ -211,16 +227,16 @@ type_init(sgx_epc_register_types)
 int sgx_epc_get_section(int section_nr, uint64_t *addr, uint64_t *size)
 {
     PCMachineState *pcms = PC_MACHINE(qdev_get_machine());
-    SGXEPCDevice *epc;
+    SGXEPCDevice *epc_dev;
 
     if (pcms->sgx_epc == NULL || pcms->sgx_epc->nr_sections <= section_nr) {
         return 1;
     }
 
-    epc = pcms->sgx_epc->sections[section_nr];
+    epc_dev = pcms->sgx_epc->sections[section_nr];
 
-    *addr = epc->addr;
-    *size = memory_device_get_region_size(MEMORY_DEVICE(epc), &error_fatal);
+    *addr = epc_dev->addr;
+    *size = memory_device_get_region_size(MEMORY_DEVICE(epc_dev), &error_fatal);
 
     return 0;
 }
@@ -291,6 +307,7 @@ void pc_machine_init_sgx_epc(PCMachineState *pcms)
     }
 
     memory_region_set_size(&sgx_epc->mr, sgx_epc->size);
+
 }
 
 static QemuOptsList sgx_epc_opts = {
