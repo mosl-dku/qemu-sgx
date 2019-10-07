@@ -64,9 +64,6 @@
       <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
     </controller>
     <controller type='pci' index='0' model='pci-root'/>
-    <controller type='virtio-serial' index='1'>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x09' function='0x0'/>
-    </controller>
     <interface type='network'>
       <mac address='52:54:00:4d:8b:a2'/>
       <source network='default'/>
@@ -85,9 +82,10 @@
       <target type='virtio' name='com.redhat.spice.0'/>
       <address type='virtio-serial' controller='0' bus='0' port='1'/>
     </channel>
-    <channel type='pty'>
+    <channel type='unix'>
+      <source mode='bind' path='/var/lib/libvirt/qemu/mig_port'/>
       <target type='virtio' name='vsgxer.migration.0'/>
-      <address type='virtio-serial' controller='1' bus='0' port='1'/>
+      <address type='virtio-serial' controller='0' bus='0' port='2'/>
     </channel>
     <input type='tablet' bus='usb'>
       <address type='usb' bus='0' port='1'/>
@@ -119,7 +117,7 @@
     <qemu:arg value='-object'/>
     <qemu:arg value='memory-backend-epc,id=mem1,size=90M,prealloc'/>
     <qemu:arg value='-sgx-epc'/>
-    <qemu:arg value='id=epc1,memdev=mem1,mig_port=vsgxer.migration.0'/>
+    <qemu:arg value='id=epc1,memdev=mem1'/>
   </qemu:commandline>
 </domain>
 
