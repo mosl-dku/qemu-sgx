@@ -26,6 +26,21 @@
 
 #include "hw/i386/sgx-epc.h"
 
+////////////////////////////////////
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include <errno.h>
+
+
+#define SOCKET_NAME "/tmp/Migration.socket"
+#define BUFFER_SIZE 256
+////////////////////////////////////
+
+
 static Property sgx_epc_properties[] = {
     DEFINE_PROP_UINT64(SGX_EPC_ADDR_PROP, SGXEPCDevice, addr, 0),
     DEFINE_PROP_LINK(SGX_EPC_MIGPORT_PROP, SGXEPCDevice, port,
@@ -42,6 +57,7 @@ static bool sgx_epc_needed(void *opaque)
 
 static int sgx_epc_pre_save(void *opaque)
 {
+	/*
 	char buf[] = "SGXEPC_MIGRATION_REQUEST";
 	void *pbuf = buf;
 	SGXEPCState *sgx_epc = opaque;
@@ -52,6 +68,56 @@ static int sgx_epc_pre_save(void *opaque)
 		virtio_serial_write(epc_dev->port, pbuf, sizeof(buf));
 	}
 	return 0;
+	*/
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	printf("SGX_epc_pre_save\n");	
+
+	struct sockaddr_un addr;
+        int ret;
+        int data_socket;
+        char buffer[BUFFER_SIZE];
+
+        /* Create local socket. */
+
+        data_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+        if (data_socket == -1) {
+                perror("socket");
+                exit(EXIT_FAILURE);
+        }
+
+        /*
+         * For portability clear the whole structure, since some
+         * implementations have additional (nonstandard) fields in
+         * the structure.
+         */
+
+        memset(&addr, 0, sizeof(struct sockaddr_un));
+
+        /* Connect socket to socket address */
+
+        addr.sun_family = AF_UNIX;
+        strncpy(addr.sun_path, SOCKET_NAME, sizeof(addr.sun_path) - 1);
+
+        ret = connect (data_socket, (const struct sockaddr *) &addr,
+                        sizeof(struct sockaddr_un));
+        if (ret == -1) {
+                fprintf(stderr, "The server is down.\n");
+                exit(EXIT_FAILURE);
+        }
+
+	sprintf(buffer, "%s", "Migration");
+	ret = write(data_socket, buffer, BUFFER_SIZE);
+	if (ret == -1) {
+		perror("write");
+		exit(EXIT_FAILURE);
+	}
+
+        /* Close socket. */
+
+        close(data_socket);
+
+        exit(EXIT_SUCCESS);
 }
 
 static const VMStateDescription vmstate_epc = {
