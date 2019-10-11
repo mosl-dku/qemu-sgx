@@ -37,14 +37,12 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 
-#define SOCK_TARGETFILE "/tmp/process_a"
 #define BUFF_SIZE 1024
 
 
 static Property sgx_epc_properties[] = {
 	DEFINE_PROP_UINT64(SGX_EPC_ADDR_PROP, SGXEPCDevice, addr, 0),
-	DEFINE_PROP_LINK(SGX_EPC_MIGPORT_PROP, SGXEPCDevice, port,
-			TYPE_VIRTIO_MIGRATION_SERIAL_PORT, VirtIOSerialPort *),
+	DEFINE_PROP_STRING(SGX_EPC_MIGPORT_PROP, SGXEPCDevice, port),
 	DEFINE_PROP_LINK(SGX_EPC_MEMDEV_PROP, SGXEPCDevice, hostmem,
 			TYPE_MEMORY_BACKEND, HostMemoryBackend *),
 	DEFINE_PROP_END_OF_LIST(),
@@ -64,31 +62,25 @@ static int sgx_epc_pre_save(void *opaque)
 	char buffer[100];
 	int ret;
 
-	printf("SGX_epc_pre_save %d\n", sgx_init++);	
-	migration_socket = socket(PF_FILE, SOCK_DGRAM, 0); 
+	SGXEPCDevice *epc_dev = opaque;
 
-	if(migration_socket == -1)
-	{   
-		printf("socket 생성 실패n");
-		exit(1); 
+	migration_socket = socket(PF_FILE, SOCK_DGRAM, 0);
+	if(migration_socket < 0) {
+		perror("socket creation failed \n");
 	}
 
 	memset(&target_addr, 0, sizeof(target_addr));
 	target_addr.sun_family = AF_UNIX;
-	strcpy(target_addr.sun_path, SOCK_TARGETFILE);
+	strcpy(target_addr.sun_path, epc_dev->port);
 
 	memset(&buffer, 0, sizeof(buffer));
-	sprintf(buffer, "%s", "MIGRATION");
+	sprintf(buffer, "%s", "MIGRATION\n");
 	ret = sendto(migration_socket, buffer, strlen(buffer) + 1, 0, (struct sockaddr*)&target_addr, sizeof(target_addr));
+	if(ret < 0) {
+		perror("sendto error");
+	}
 
 	close(migration_socket);
-
-	printf("ret : %d\n", ret);
-	if(ret < 0)
-	{
-		perror("sendto error");
-		printf("errno : %d\n", errno);
-	}
 
 	return 0;
 }
@@ -127,16 +119,16 @@ static void sgx_epc_init(Object *obj)
 			NULL, NULL, NULL, &error_abort);
 }
 
+//default port file (unix domain socket)
+static const char *default_portname = "/var/lib/libvirt/qemu/mig_port";
 static void sgx_epc_realize(DeviceState *dev, Error **errp)
 {
-	char serialport_name[] = "vsgxer.migration.0";
 	PCMachineState *pcms = PC_MACHINE(qdev_get_machine());
 	MemoryDeviceState *md = MEMORY_DEVICE(dev);
 	SGXEPCState *sgx_epc = pcms->sgx_epc;
 	SGXEPCDevice *epc_dev = SGX_EPC(dev);
-	VirtIOSerialPort *port = g_mig_port;
-	if (port == NULL) {
-		printf("find_virtio_serialport_by_name: %s failed\n", serialport_name);
+	if (epc_dev->port == NULL) {
+		epc_dev->port = (char *)default_portname;
 	}
 
 	if (pcms->boot_cpus != 0) {
@@ -167,17 +159,6 @@ static void sgx_epc_realize(DeviceState *dev, Error **errp)
 	sgx_epc->sections[sgx_epc->nr_sections++] = epc_dev;
 
 	sgx_epc->size += memory_device_get_region_size(md, errp);
-
-	// opening file for sgx-epc migration
-	if (port != NULL) {
-		int ret = virtio_serial_open(port);
-		if (ret == 0) {
-			epc_dev->port = port;
-		} else {
-			error_setg(errp,
-					"'" TYPE_SGX_EPC "' can't open guest comm port");
-		}
-	}
 }
 
 static void sgx_epc_unrealize(DeviceState *dev, Error **errp)
@@ -185,7 +166,6 @@ static void sgx_epc_unrealize(DeviceState *dev, Error **errp)
 	SGXEPCDevice *epc_dev = SGX_EPC(dev);
 
 	host_memory_backend_set_mapped(epc_dev->hostmem, false);
-	virtio_serial_close(epc_dev->port);
 }
 
 static uint64_t sgx_epc_md_get_addr(const MemoryDeviceState *md)

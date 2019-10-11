@@ -40,7 +40,7 @@ typedef struct SGXEPCDevice {
     /* public */
     uint64_t addr;
     HostMemoryBackend *hostmem;
-	VirtIOSerialPort *port;
+	char *port;
 } SGXEPCDevice;
 
 /*
