@@ -118,7 +118,6 @@ static int migration_maybe_pause(MigrationState *s,
                                  int *current_active_state,
                                  int new_state);
 
-extern int sgx_epc_presave(void *opaque);
 void migration_object_init(void)
 {
     MachineState *ms = MACHINE(qdev_get_machine());
@@ -2972,6 +2971,12 @@ static void migration_iteration_finish(MigrationState *s)
     case MIGRATION_STATUS_COMPLETED:
         migration_calculate_complete(s);
         runstate_set(RUN_STATE_POSTMIGRATE);
+		PCMachineState *pcms = PC_MACHINE(qdev_get_machine());
+		bool has_sgx = (pcms->sgx_epc != NULL);
+		printf("migration_thread: sgx_loadepc_state %d\n", has_sgx);
+		sgx_epc_postload( pcms->sgx_epc->sections[0] );
+
+
         break;
 
     case MIGRATION_STATUS_ACTIVE:

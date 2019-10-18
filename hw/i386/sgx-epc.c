@@ -55,7 +55,7 @@ static bool sgx_epc_needed(void *opaque)
 	return true;
 }
 
-static int sgx_epc_postload(void *opaque, int version_id)
+int sgx_epc_postload(void *opaque)
 {
 	int migration_socket;
 	struct sockaddr_un target_addr;
@@ -64,7 +64,7 @@ static int sgx_epc_postload(void *opaque, int version_id)
 
 	SGXEPCDevice *epc_dev = opaque;
 
-	migration_socket = socket(PF_FILE, SOCK_DGRAM, 0);
+	migration_socket = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if(migration_socket < 0) {
 		perror("socket creation failed \n");
 	}
@@ -94,7 +94,7 @@ int sgx_epc_early_save(void *opaque)
 
 	SGXEPCDevice *epc_dev = opaque;
 
-	migration_socket = socket(PF_FILE, SOCK_DGRAM, 0);
+	migration_socket = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if(migration_socket < 0) {
 		perror("socket creation failed \n");
 	}
@@ -118,7 +118,6 @@ int sgx_epc_early_save(void *opaque)
 static const VMStateDescription vmstate_epc = {
 	.name = "sgx-epc",
 	.needed = sgx_epc_needed,
-	.post_load = sgx_epc_postload,
 	.version_id = 3,
 	.minimum_version_id = 3,
 	.fields = (VMStateField[]) {
