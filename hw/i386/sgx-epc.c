@@ -55,7 +55,37 @@ static bool sgx_epc_needed(void *opaque)
 	return true;
 }
 
-static int sgx_epc_pre_save(void *opaque)
+static int sgx_epc_postload(void *opaque, int version_id)
+{
+	int migration_socket;
+	struct sockaddr_un target_addr;
+	char buffer[100];
+	int ret;
+
+	SGXEPCDevice *epc_dev = opaque;
+
+	migration_socket = socket(PF_FILE, SOCK_DGRAM, 0);
+	if(migration_socket < 0) {
+		perror("socket creation failed \n");
+	}
+
+	memset(&target_addr, 0, sizeof(target_addr));
+	target_addr.sun_family = AF_UNIX;
+	strcpy(target_addr.sun_path, epc_dev->port);
+
+	memset(&buffer, 0, sizeof(buffer));
+	sprintf(buffer, "%s", "MIGRATED\n");
+	ret = sendto(migration_socket, buffer, strlen(buffer) + 1, 0, (struct sockaddr*)&target_addr, sizeof(target_addr));
+	if(ret < 0) {
+		perror("sendto error");
+	}
+
+	close(migration_socket);
+
+	return 0;
+}
+
+int sgx_epc_early_save(void *opaque)
 {
 	int migration_socket;
 	struct sockaddr_un target_addr;
@@ -88,9 +118,9 @@ static int sgx_epc_pre_save(void *opaque)
 static const VMStateDescription vmstate_epc = {
 	.name = "sgx-epc",
 	.needed = sgx_epc_needed,
+	.post_load = sgx_epc_postload,
 	.version_id = 3,
 	.minimum_version_id = 3,
-	.pre_save = sgx_epc_pre_save,
 	.fields = (VMStateField[]) {
 		VMSTATE_UINT64(base, SGXEPCState),
 		VMSTATE_UINT64(size, SGXEPCState),
@@ -216,7 +246,6 @@ static void sgx_epc_class_init(ObjectClass *oc, void *data)
 	dc->unrealize = sgx_epc_unrealize;
 	dc->props = sgx_epc_properties;
 	dc->desc = "SGX EPC section";
-	dc->vmsd = &vmstate_epc;
 
 	mdc->get_addr = sgx_epc_md_get_addr;
 	mdc->set_addr = sgx_epc_md_set_addr;

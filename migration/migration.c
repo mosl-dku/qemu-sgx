@@ -45,6 +45,7 @@
 #include "migration/colo.h"
 #include "hw/boards.h"
 #include "monitor/monitor.h"
+#include "hw/i386/pc.h"
 
 #define MAX_THROTTLE  (32 << 20)      /* Migration transfer speed throttling */
 
@@ -117,6 +118,7 @@ static int migration_maybe_pause(MigrationState *s,
                                  int *current_active_state,
                                  int new_state);
 
+extern int sgx_epc_presave(void *opaque);
 void migration_object_init(void)
 {
     MachineState *ms = MACHINE(qdev_get_machine());
@@ -3069,6 +3071,13 @@ static void *migration_thread(void *opaque)
                       MIGRATION_STATUS_ACTIVE);
 
     trace_migration_thread_setup_complete();
+
+	// before entering post copy, take snapshot the sgx enclave
+	// so that the snapshot in memory can be transferred
+	PCMachineState *pcms = PC_MACHINE(qdev_get_machine());
+	bool has_sgx = (pcms->sgx_epc != NULL);
+	printf("migration_thread: sgx_savevm_state %d\n", has_sgx);
+	sgx_epc_early_save(pcms->sgx_epc->sections[0]);
 
     while (s->state == MIGRATION_STATUS_ACTIVE ||
            s->state == MIGRATION_STATUS_POSTCOPY_ACTIVE) {
