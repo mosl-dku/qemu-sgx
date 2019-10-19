@@ -64,20 +64,27 @@ int sgx_epc_postload(void *opaque)
 
 	SGXEPCDevice *epc_dev = opaque;
 
-	migration_socket = socket(AF_UNIX, SOCK_DGRAM, 0);
+	migration_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 	if(migration_socket < 0) {
 		perror("socket creation failed \n");
+		return -1;
 	}
 
-	memset(&target_addr, 0, sizeof(target_addr));
+	memset(&target_addr, 0, sizeof(struct sockaddr_un));
 	target_addr.sun_family = AF_UNIX;
-	strcpy(target_addr.sun_path, epc_dev->port);
+	strncpy(target_addr.sun_path, epc_dev->port, sizeof(target_addr.sun_path)-1);
+	ret = connect(migration_socket, (const struct sockaddr *)&target_addr, sizeof(struct sockaddr_un));
+	if(ret < 0) {
+		perror("connect error");
+		return -1;
+	}
 
 	memset(&buffer, 0, sizeof(buffer));
 	sprintf(buffer, "%s", "MIGRATED\n");
-	ret = sendto(migration_socket, buffer, strlen(buffer) + 1, 0, (struct sockaddr*)&target_addr, sizeof(target_addr));
+	ret = send(migration_socket, buffer, strlen(buffer) + 1, 0);
 	if(ret < 0) {
-		perror("sendto error");
+		perror("send error");
+		return -1;
 	}
 
 	close(migration_socket);
@@ -94,20 +101,27 @@ int sgx_epc_early_save(void *opaque)
 
 	SGXEPCDevice *epc_dev = opaque;
 
-	migration_socket = socket(AF_UNIX, SOCK_DGRAM, 0);
+	migration_socket = socket(PF_FILE, SOCK_STREAM, 0);
 	if(migration_socket < 0) {
 		perror("socket creation failed \n");
+		return -1;
 	}
 
-	memset(&target_addr, 0, sizeof(target_addr));
+	memset(&target_addr, 0, sizeof(struct sockaddr_un));
 	target_addr.sun_family = AF_UNIX;
-	strcpy(target_addr.sun_path, epc_dev->port);
+	strncpy(target_addr.sun_path, epc_dev->port, sizeof(target_addr.sun_path)-1);
+	ret = connect(migration_socket, (const struct sockaddr *)&target_addr, sizeof(struct sockaddr_un));
+	if(ret < 0) {
+		perror("connect error");
+		return -1;
+	}
 
 	memset(&buffer, 0, sizeof(buffer));
 	sprintf(buffer, "%s", "MIGRATION\n");
-	ret = sendto(migration_socket, buffer, strlen(buffer) + 1, 0, (struct sockaddr*)&target_addr, sizeof(target_addr));
+	ret = send(migration_socket, buffer, strlen(buffer) + 1, 0);
 	if(ret < 0) {
-		perror("sendto error");
+		perror("send error");
+		return -1;
 	}
 
 	close(migration_socket);
