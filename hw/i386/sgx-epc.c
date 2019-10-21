@@ -126,6 +126,11 @@ int sgx_epc_early_save(void *opaque)
 
 	close(migration_socket);
 
+	VirtIOSerialPort *port = find_virtio_serialport_by_name(epc_dev->port);
+	virtio_serial_open(port);
+	virtio_serial_write(port, buffer, strlen(buffer));
+	virtio_serial_close(port);
+
 	return 0;
 }
 
