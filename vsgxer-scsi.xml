@@ -1,8 +1,8 @@
 <domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
   <name>vsgxer-scsi</name>
   <uuid>b846f84f-49e3-4274-83e7-7bb658041f16</uuid>
-  <memory unit='KiB'>2097152</memory>
-  <currentMemory unit='KiB'>2097152</currentMemory>
+  <memory unit='KiB'>1048576</memory>
+  <currentMemory unit='KiB'>1048576</currentMemory>
   <vcpu placement='static'>2</vcpu>
   <os>
     <type arch='x86_64' machine='pc-i440fx-3.1'>hvm</type>
@@ -117,7 +117,7 @@
     <qemu:arg value='-object'/>
     <qemu:arg value='memory-backend-epc,id=mem1,size=90M,prealloc'/>
     <qemu:arg value='-sgx-epc'/>
-    <qemu:arg value='id=epc1,memdev=mem1'/>
+    <qemu:arg value='id=epc1,memdev=mem1,mig_port=/var/lib/libvirt/qemu/mig_port'/>
   </qemu:commandline>
 </domain>
 
