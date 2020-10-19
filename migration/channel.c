@@ -18,6 +18,7 @@
 #include "trace.h"
 #include "qapi/error.h"
 #include "io/channel-tls.h"
+#include <stdio.h>
 
 /**
  * @migration_channel_process_incoming - Create new incoming migration channel
@@ -64,7 +65,7 @@ void migration_channel_connect(MigrationState *s,
 {
     trace_migration_set_outgoing_channel(
         ioc, object_get_typename(OBJECT(ioc)), hostname, error);
-
+    printf("LOG : channel connect to host : %s\n", hostname);
     if (!error) {
         if (s->parameters.tls_creds &&
             *s->parameters.tls_creds &&
@@ -88,6 +89,7 @@ void migration_channel_connect(MigrationState *s,
             qemu_mutex_unlock(&s->qemu_file_lock);
         }
     }
+    printf("LOG : Call migrate_fd_connect\n");
     migrate_fd_connect(s, error);
     error_free(error);
 }

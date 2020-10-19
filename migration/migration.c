@@ -46,6 +46,13 @@
 #include "hw/boards.h"
 #include "monitor/monitor.h"
 #include "hw/i386/pc.h"
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdbool.h>
 
 #define MAX_THROTTLE  (32 << 20)      /* Migration transfer speed throttling */
 
@@ -318,19 +325,26 @@ void qemu_start_incoming_migration(const char *uri, Error **errp)
     const char *p;
 
     qapi_event_send_migration(MIGRATION_STATUS_SETUP);
+    printf("LOG : qemu_start_incoming_migration\n");
     if (!strcmp(uri, "defer")) {
+	printf("LOG : MIG : defer_incoming\n");
         deferred_incoming_migration(errp);
     } else if (strstart(uri, "tcp:", &p)) {
+	printf("LOG : MIG : tcp_incoming\n");
         tcp_start_incoming_migration(p, errp);
 #ifdef CONFIG_RDMA
     } else if (strstart(uri, "rdma:", &p)) {
+	printf("LOG : MIG : rdma_incoming\n");
         rdma_start_incoming_migration(p, errp);
 #endif
     } else if (strstart(uri, "exec:", &p)) {
+	printf("LOG : MIG : exec_incoming\n");
         exec_start_incoming_migration(p, errp);
     } else if (strstart(uri, "unix:", &p)) {
+	printf("LOG : MIG : unix_incoming\n");
         unix_start_incoming_migration(p, errp);
     } else if (strstart(uri, "fd:", &p)) {
+	printf("LOG : MIG : fd_incoming\n");
         fd_start_incoming_migration(p, errp);
     } else {
         error_setg(errp, "unknown migration protocol: %s", uri);
@@ -405,6 +419,7 @@ static void process_incoming_migration_co(void *opaque)
     int ret;
     Error *local_err = NULL;
 
+    printf("LOG : MIG : tread_cincomming _migration_co !!\n");
     assert(mis->from_src_file);
     mis->migration_incoming_co = qemu_coroutine_self();
     mis->largest_page_size = qemu_ram_pagesize_largest();
@@ -1787,19 +1802,26 @@ void qmp_migrate(const char *uri, bool has_blk, bool blk,
         return;
     }
 
+    printf("LOG : qmp_migrate -> uri = %s\n", uri);
     if (strstart(uri, "tcp:", &p)) {
+	printf("LOG : qmp_migrate -> tcp\n");
         tcp_start_outgoing_migration(s, p, &local_err);
 #ifdef CONFIG_RDMA
     } else if (strstart(uri, "rdma:", &p)) {
+	printf("LOG : qmp_migrate -> rdma\n");
         rdma_start_outgoing_migration(s, p, &local_err);
 #endif
     } else if (strstart(uri, "exec:", &p)) {
+	printf("LOG : qmp_migrate -> exec\n");
         exec_start_outgoing_migration(s, p, &local_err);
     } else if (strstart(uri, "unix:", &p)) {
+	printf("LOG : qmp_migrate -> unix\n");
         unix_start_outgoing_migration(s, p, &local_err);
     } else if (strstart(uri, "fd:", &p)) {
+	printf("LOG : qmp_migrate -> fd\n");
         fd_start_outgoing_migration(s, p, &local_err);
     } else {
+	printf("LOG : qmp_migrate -> uri error\n");
         error_setg(errp, QERR_INVALID_PARAMETER_VALUE, "uri",
                    "a valid migration protocol");
         migrate_set_state(&s->state, MIGRATION_STATUS_SETUP,
@@ -3150,7 +3172,9 @@ void migrate_fd_connect(MigrationState *s, Error *error_in)
 {
     int64_t rate_limit;
     bool resume = s->state == MIGRATION_STATUS_POSTCOPY_PAUSED;
-
+	
+    printf("LOG : in migrate_fd_connect\n");
+    
     s->expected_downtime = s->parameters.downtime_limit;
     s->cleanup_bh = qemu_bh_new(migrate_fd_cleanup, s);
     if (error_in) {
@@ -3202,9 +3226,10 @@ void migrate_fd_connect(MigrationState *s, Error *error_in)
         return;
     }
     qemu_thread_create(&s->thread, "live_migration", migration_thread, s,
-                       QEMU_THREAD_JOINABLE);
+                    QEMU_THREAD_JOINABLE);
     s->migration_thread_running = true;
 }
+
 
 void migration_global_dump(Monitor *mon)
 {

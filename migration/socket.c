@@ -27,6 +27,18 @@
 #include "io/net-listener.h"
 #include "trace.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdbool.h>
+#include <pthread.h>
+
 
 struct SocketOutgoingArgs {
     SocketAddress *saddr;
@@ -195,6 +207,18 @@ void tcp_start_incoming_migration(const char *host_port, Error **errp)
 {
     Error *err = NULL;
     SocketAddress *saddr = tcp_build_address(host_port, &err);
+
+    bool result;
+    printf("LOG : quote generating...\n");
+    result = send_quote();
+
+    if(result){
+        printf("LOG : quote gen success!\n");
+        if(system("rm /tmp/send.dat") != 0);
+	    else printf("System function err\n");
+    }else
+	    return;
+
     if (!err) {
         socket_start_incoming_migration(saddr, &err);
     }
@@ -207,4 +231,95 @@ void unix_start_incoming_migration(const char *path, Error **errp)
     SocketAddress *saddr = unix_build_address(path);
     socket_start_incoming_migration(saddr, errp);
     qapi_free_SocketAddress(saddr);
+}
+
+void file_send(void *args){
+    int server_sockfd, client_sockfd;
+    int state;
+    socklen_t client_len;
+    size_t fsize = 0, nsize = 0, fpsize = 0;
+    FILE *file = NULL;
+
+    struct stat;
+    struct sockaddr_in clientaddr, serveraddr;
+
+    char buf[256];
+    memset(buf, 0x00, 256);
+    state = 0;
+
+    client_len = sizeof(clientaddr);
+
+    printf("LOG : file_sendig thread created!! - now try make socket\n");
+
+    if ((server_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+        printf("ERR : socket error - thread exit\n");
+        pthread_exit(NULL);
+    }
+
+    // sender setting
+    memset(&serveraddr,0x00, sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serveraddr.sin_port = htons(8888);
+
+    printf("LOG : MIG : now TRY binding in thread\n");
+    state = bind(server_sockfd , (struct sockaddr *)&serveraddr, sizeof(serveraddr));
+
+    if (state == -1) {
+        printf("ERR : bind error - thread exit\n");
+        pthread_exit(NULL);
+    }
+
+    printf("LOG : MIG : now TRY listen in thread\n");
+    state = listen(server_sockfd, 5);
+    if (state == -1) {
+        printf("ERR : listen error - thread exit\n");
+        pthread_exit(NULL);
+    }
+
+    printf("LOG : try open send.dat\n");
+    file = fopen("/tmp/send.dat", "rb");
+    fseek(file, 0, SEEK_END);
+    fsize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    printf("LOG : wait accept \n");
+    client_sockfd = accept(server_sockfd,
+            (struct sockaddr *)&clientaddr, &client_len);
+
+    send(client_sockfd, &fsize, sizeof(fsize), 0);
+
+    printf("LOG : try file sending \n");
+    while(nsize != fsize){
+        fpsize = fread(buf, 1, 256, file);
+        nsize = nsize+fpsize;
+        send(client_sockfd, buf, fpsize, 0);
+    }
+    close(client_sockfd);
+    fclose(file);
+    printf("LOG : MIG - SUCCESS FILE SENDING - now thread exit  \n");
+}
+
+bool send_quote(void){
+    int pid, thr_id;
+    pthread_t p_thread;
+    printf("LOG : MIG : send_quote - try fork\n");
+    pid = fork();
+    if(pid < 0){    /* error occurred */
+        printf("ERR : fork error\n");
+        return false;
+    }else if (pid== 0){
+        execl("/bin/sh", "sh", "/tmp/gen.sh", NULL);
+        printf("INFO : finish exec\n");
+    }else
+        wait(NULL);
+    printf("LOG : MIG : send_quote - try create thread file_send\n");
+    thr_id = pthread_create(&p_thread, NULL, (void*)file_send, NULL);
+    if (thr_id < 0){
+        printf("LOG : thread create error\n");
+        return false;
+    }
+    printf("LOG : MIG : thread created!!\n");
+    //pthread_join(p_thread, NULL);
+    return true;
 }
