@@ -26,6 +26,8 @@
 #define SGX_EPC_SIZE_PROP "size"
 #define SGX_EPC_MEMDEV_PROP "memdev"
 
+#define SGX_EPC_MIGPORT_PROP "mig_port"
+
 /**
  * SGXEPCDevice:
  * @addr: starting guest physical address, where @SGXEPCDevice is mapped.
@@ -39,6 +41,7 @@ typedef struct SGXEPCDevice {
     /* public */
     uint64_t addr;
     HostMemoryBackend *hostmem;
+    char *port;
 } SGXEPCDevice;
 
 /*
@@ -59,6 +62,8 @@ extern int sgx_epc_enabled;
 
 void pc_machine_init_sgx_epc(PCMachineState *pcms);
 int sgx_epc_get_section(int section_nr, uint64_t *addr, uint64_t *size);
+int sgx_epc_early_save(void *opaque);
+int sgx_epc_postload(void *opaque);
 
 static inline bool sgx_epc_above_4g(SGXEPCState *sgx_epc)
 {

@@ -40,7 +40,7 @@ Object *user_creatable_add_type(const char *type, const char *id,
 
     klass = object_class_by_name(type);
     if (!klass) {
-        error_setg(errp, "invalid object type: %s", type);
+        error_setg(errp, "invalid object type: %s_qom_obj_interface", type);
         return NULL;
     }
 

@@ -16,6 +16,7 @@
 #include "qom/object_interfaces.h"
 #include "qapi/error.h"
 #include "sysemu/hostmem.h"
+#include <errno.h>
 
 #define TYPE_MEMORY_BACKEND_EPC "memory-backend-epc"
 
@@ -70,7 +71,7 @@ static void sgx_epc_backend_class_init(ObjectClass *oc, void *data)
     bc->alloc = sgx_epc_backend_memory_alloc;
 }
 
-static const TypeInfo sgx_epc_backed_info = {
+static const TypeInfo sgx_epc_backend_info = {
     .name = TYPE_MEMORY_BACKEND_EPC,
     .parent = TYPE_MEMORY_BACKEND,
     .instance_init = sgx_epc_backend_instance_init,
@@ -84,7 +85,10 @@ static void register_types(void)
     if (fd >= 0) {
         close(fd);
 
-        type_register_static(&sgx_epc_backed_info);
+        type_register_static(&sgx_epc_backend_info);
+        printf("type_register_static(&sgx_epc_backend_info);\n");
+    } else {
+	    perror("sgx_virt open");
     }
 }
 

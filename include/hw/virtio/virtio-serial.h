@@ -32,6 +32,10 @@ struct virtio_serial_conf {
      OBJECT_CLASS_CHECK(VirtIOSerialPortClass, (klass), TYPE_VIRTIO_SERIAL_PORT)
 #define VIRTIO_SERIAL_PORT_GET_CLASS(obj) \
      OBJECT_GET_CLASS(VirtIOSerialPortClass, (obj), TYPE_VIRTIO_SERIAL_PORT)
+#define TYPE_VIRTIO_MIGRATION_SERIAL_PORT "migport"
+#define VIRTIO_MIGPORT(obj) \
+    OBJECT_CHECK(MigPort, (obj), TYPE_VIRTIO_MIGRATION_SERIAL_PORT)
+
 
 typedef struct VirtIOSerial VirtIOSerial;
 typedef struct VirtIOSerialBus VirtIOSerialBus;
@@ -197,6 +201,12 @@ struct VirtIOSerial {
  * Open a connection to the port
  *   Returns 0 on success (always).
  */
+VirtIOSerialPort *find_virtio_serialport_by_name(char *name);
+
+/*
+ * Open a connection to the port
+ *   Returns 0 on success (always).
+ */
 int virtio_serial_open(VirtIOSerialPort *port);
 
 /*
@@ -226,5 +236,5 @@ void virtio_serial_throttle_port(VirtIOSerialPort *port, bool throttle);
 #define TYPE_VIRTIO_SERIAL "virtio-serial-device"
 #define VIRTIO_SERIAL(obj) \
         OBJECT_CHECK(VirtIOSerial, (obj), TYPE_VIRTIO_SERIAL)
-
+extern VirtIOSerialPort *g_mig_port;
 #endif

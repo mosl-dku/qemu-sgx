@@ -49,6 +49,8 @@
 #include "monitor/monitor.h"
 #include "net/announce.h"
 
+#include "hw/i386/pc.h"
+
 #define MAX_THROTTLE  (32 << 20)      /* Migration transfer speed throttling */
 
 /* Amount of time to allocate to each "chunk" of bandwidth-throttled
@@ -3109,6 +3111,12 @@ static void migration_iteration_finish(MigrationState *s)
     case MIGRATION_STATUS_COMPLETED:
         migration_calculate_complete(s);
         runstate_set(RUN_STATE_POSTMIGRATE);
+
+        PCMachineState *pcms = PC_MACHINE(qdev_get_machine());
+		bool has_sgx = (pcms->sgx_epc != NULL);
+		printf("migration_thread: sgx_loadepc_state %d\n", has_sgx);
+		sgx_epc_postload( pcms->sgx_epc->sections[0] );
+
         break;
 
     case MIGRATION_STATUS_ACTIVE:
@@ -3209,6 +3217,13 @@ static void *migration_thread(void *opaque)
                       MIGRATION_STATUS_ACTIVE);
 
     trace_migration_thread_setup_complete();
+
+    // before entering post copy, take snapshot the sgx enclave
+	// so that the snapshot in memory can be transferred
+	PCMachineState *pcms = PC_MACHINE(qdev_get_machine());
+	bool has_sgx = (pcms->sgx_epc != NULL);
+	printf("migration_thread: sgx_savevm_state %d\n", has_sgx);
+	sgx_epc_early_save(pcms->sgx_epc->sections[0]);
 
     while (s->state == MIGRATION_STATUS_ACTIVE ||
            s->state == MIGRATION_STATUS_POSTCOPY_ACTIVE) {

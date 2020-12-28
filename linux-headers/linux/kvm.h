@@ -1434,6 +1434,7 @@ struct kvm_enc_region {
 /* Available with KVM_CAP_NESTED_STATE */
 #define KVM_GET_NESTED_STATE         _IOWR(KVMIO, 0xbe, struct kvm_nested_state)
 #define KVM_SET_NESTED_STATE         _IOW(KVMIO,  0xbf, struct kvm_nested_state)
+#define KVM_EPC_STOP				 _IOW(KVMIO,  0xc3, void *)
 
 /* Available with KVM_CAP_MANUAL_DIRTY_LOG_PROTECT */
 #define KVM_CLEAR_DIRTY_LOG          _IOWR(KVMIO, 0xc0, struct kvm_clear_dirty_log)

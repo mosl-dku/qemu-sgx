@@ -257,6 +257,22 @@ static size_t send_control_event(VirtIOSerial *vser, uint32_t port_id,
     return send_control_msg(vser, &cpkt, sizeof(cpkt));
 }
 
+VirtIOSerialPort *find_virtio_serialport_by_name(char *name)
+{
+    VirtIOSerial *vser;
+
+    QLIST_FOREACH(vser, &vserdevices.devices, next) {
+        VirtIOSerialPort *port;
+
+        QTAILQ_FOREACH(port, &vser->ports, next) {
+            if (port->name && !strcmp(port->name, name)) {
+                return port;
+            }
+        }
+    }
+    return NULL;
+}
+
 /* Functions for use inside qemu to open and read from/write to ports */
 int virtio_serial_open(VirtIOSerialPort *port)
 {
