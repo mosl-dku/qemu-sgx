@@ -86,8 +86,21 @@ Qemu SGX updates the `etc/msr_feature_control` fw_cfg entry to set the SGX (bit 
 
 Releases
 ========
+  * sgx-v4.0.0-r3
+      - Fix a build bug with --disable-kvm and/or --enable-debug.
+      - Compatible with KVM SGX kernel release sgx-v5.6.0-rc5-r1
+
+  * sgx-v4.0.0-r2
+      - Fix a conflict with VFIO that broke device pass-through.
+      - Compatible with KVM SGX kernel release sgx-v5.6.0-rc5-r1
+
+  * sgx-v4.0.0-r1
+      - Rebase to upstream release v4.0.0
+      - Support exposing PROVISIONKEY to guest.
+      - Compatible with KVM SGX kernel release sgx-v5.6.0-rc5-r1
+
   * sgx-v3.1.0-r1
-      - Rebase to upstream release v3.1.0-r1
+      - Rebase to upstream release v3.1.0
       - Expose EPC via memory backend and sgx-epc device
       - Support restricting SGX sub-features via CPUID flags
       - Compatible with KVM SGX kernel release sgx-v5.0.0-r1

@@ -17,8 +17,6 @@
 #include "qapi/error.h"
 #include "sysemu/hostmem.h"
 
-#include <asm/sgx.h>
-
 #define TYPE_MEMORY_BACKEND_EPC "memory-backend-epc"
 
 #define MEMORY_BACKEND_EPC(obj)                                        \
@@ -33,10 +31,8 @@ struct HostMemoryBackendEpc {
 static void
 sgx_epc_backend_memory_alloc(HostMemoryBackend *backend, Error **errp)
 {
-#ifdef SGX_VIRT_EPC_CREATE
-    struct sgx_virt_epc_create params;
-    int vfd, fd;
     char *name;
+    int fd;
 
     if (!backend->size) {
         error_setg(errp, "can't create backend with size 0");
@@ -44,31 +40,18 @@ sgx_epc_backend_memory_alloc(HostMemoryBackend *backend, Error **errp)
     }
     backend->force_prealloc = mem_prealloc;
 
-    vfd = open("/dev/sgx_virt", O_RDWR);
-    if (vfd < 0) {
-        error_setg_errno(errp, errno,
-                         "failed to open /dev/sgx_virt to allocate SGX EPC");
-        return;
-    }
-
-    params.size = backend->size;
-
-    fd = ioctl(vfd, SGX_VIRT_EPC_CREATE, &params);
-    close(vfd);
-
+    fd = open("/dev/sgx/virt_epc", O_RDWR);
     if (fd < 0) {
-        error_setg_errno(errp, errno, "failed to create SGX EPC");
+        error_setg_errno(errp, errno,
+                         "failed to open /dev/sgx/virt_epc to alloc SGX EPC");
         return;
     }
 
     name = object_get_canonical_path(OBJECT(backend));
     memory_region_init_ram_from_fd(&backend->mr, OBJECT(backend),
-                                   name, backend->size,
-                                   backend->share, fd, errp);
+                                   name, backend->size, backend->share, true,
+                                   fd, errp);
     g_free(name);
-#else
-    error_setg(errp, "SGX EPC not supported on this system");
-#endif
 }
 
 static void sgx_epc_backend_instance_init(Object *obj)
@@ -97,14 +80,12 @@ static const TypeInfo sgx_epc_backed_info = {
 
 static void register_types(void)
 {
-#ifdef SGX_VIRT_EPC_CREATE
-    int fd = open("/dev/sgx_virt", O_RDWR);
+    int fd = open("/dev/sgx/virt_epc", O_RDWR);
     if (fd >= 0) {
         close(fd);
 
         type_register_static(&sgx_epc_backed_info);
     }
-#endif
 }
 
 type_init(register_types);
