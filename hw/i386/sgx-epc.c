@@ -125,6 +125,7 @@ static const VMStateDescription vmstate_epc = {
 		VMSTATE_UINT64(size, SGXEPCState),
 		VMSTATE_END_OF_LIST()
 	},
+};
 
 static void sgx_epc_get_size(Object *obj, Visitor *v, const char *name,
                              void *opaque, Error **errp)
