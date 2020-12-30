@@ -220,7 +220,7 @@ static uint64_t sgx_epc_md_get_plugged_size(const MemoryDeviceState *md,
 static MemoryRegion *sgx_epc_md_get_memory_region(MemoryDeviceState *md,
                                                   Error **errp)
 {
-    SGXEPCDevice *epc = SGX_EPC(md);
+    SGXEPCDevice *epc_dev = SGX_EPC(md);
 
     if (!epc_dev->hostmem) {
         error_setg(errp, "'" SGX_EPC_MEMDEV_PROP "' property must be set");
