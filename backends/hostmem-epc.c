@@ -67,7 +67,6 @@ static void sgx_epc_backend_instance_init(Object *obj)
 static void sgx_epc_backend_class_init(ObjectClass *oc, void *data)
 {
     HostMemoryBackendClass *bc = MEMORY_BACKEND_CLASS(oc);
-
     bc->alloc = sgx_epc_backend_memory_alloc;
 }
 
@@ -81,6 +80,7 @@ static const TypeInfo sgx_epc_backend_info = {
 
 static void register_types(void)
 {
+    printf("LOG : hostmem-epc - register_types\n");
     int fd = open("/dev/sgx/virt_epc", O_RDWR);
     if (fd >= 0) {
         close(fd);
@@ -88,7 +88,7 @@ static void register_types(void)
         type_register_static(&sgx_epc_backend_info);
         printf("type_register_static(&sgx_epc_backend_info);\n");
     } else {
-	    perror("sgx_virt open");
+	    perror("/dev/sgx/virt_epc open");
     }
 }
 

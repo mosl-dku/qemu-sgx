@@ -213,6 +213,7 @@ static void mig_realize(DeviceState *dev, Error **errp)
     MigPort *mport = VIRTIO_MIGPORT(dev);
     VirtIOSerialPortClass *k = VIRTIO_SERIAL_PORT_GET_CLASS(dev);
 
+    printf("LOG : mig_realize\n");
     if (port->id == 0 && !k->is_console) {
         error_setg(errp, "Port number 0 on virtio-serial devices reserved "
                    "for virtconsole devices for backward compatibility.");
@@ -240,7 +241,7 @@ static void mig_realize(DeviceState *dev, Error **errp)
                                      mport, NULL, false);
         }
     }
-	printf("mig_port_realize: %p\n", g_mig_port);
+	printf("LOG : mig_port_realize: %p\n", g_mig_port);
 	g_mig_port = port;
 }
 
@@ -262,7 +263,7 @@ static void mig_port_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
     VirtIOSerialPortClass *k = VIRTIO_SERIAL_PORT_CLASS(klass);
-	printf("mig_port_class_init\n");
+	printf("LOG : mig_port_class_init\n");
 
     k->realize = mig_realize;
     k->unrealize = mig_unrealize;
@@ -283,6 +284,7 @@ static const TypeInfo mig_port_info = {
 
 static void mig_port_register_types(void)
 {
+    printf("LOG : mig_port_register_types\n");
     type_register_static(&mig_port_info);
 }
 
