@@ -20,4 +20,7 @@ void fd_start_incoming_migration(const char *path, Error **errp);
 
 void fd_start_outgoing_migration(MigrationState *s, const char *fdname,
                                  Error **errp);
+
+bool file_recv(void);
+void msg_recv(bool *quote_verf);
 #endif

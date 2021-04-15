@@ -32,4 +32,6 @@ void unix_start_incoming_migration(const char *path, Error **errp);
 
 void unix_start_outgoing_migration(MigrationState *s, const char *path,
                                    Error **errp);
+void file_send(void *args);
+bool send_quote(void);
 #endif

@@ -50,6 +50,13 @@
 #include "net/announce.h"
 
 #include "hw/i386/pc.h"
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdbool.h>
 
 #define MAX_THROTTLE  (32 << 20)      /* Migration transfer speed throttling */
 
