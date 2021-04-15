@@ -49,18 +49,6 @@ void fd_start_outgoing_migration(MigrationState *s, const char *fdname, Error **
     int thr_id;
     pthread_t p_thread;
 
-struct sockaddr_in servaddr; // QUOTE
-    int sock;
-    char buf[256];
-    char filename[20];
-    int fp, filesize;
-    int sread, total = 0;
-
-    bool result = false;
-    bool verf_result;
-    int thr_id;
-    pthread_t p_thread;
-
     while(!result){
         printf("LOG : TRY receive finished\n");
         result = file_recv();
