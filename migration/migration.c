@@ -431,6 +431,12 @@ static void process_incoming_migration_bh(void *opaque)
      */
     migrate_set_state(&mis->state, MIGRATION_STATUS_ACTIVE,
                       MIGRATION_STATUS_COMPLETED);
+
+	PCMachineState *pcms = PC_MACHINE(qdev_get_machine());
+	bool has_sgx = (pcms->sgx_epc != NULL);
+	printf("migration_thread: sgx_loadepc_state %d\n", has_sgx);
+	sgx_epc_postload( pcms->sgx_epc->sections[0] );
+
     qemu_bh_delete(mis->bh);
     migration_incoming_state_destroy();
 }
@@ -2742,8 +2748,8 @@ static void migration_completion(MigrationState *s)
         s->downtime_start = qemu_clock_get_ms(QEMU_CLOCK_REALTIME);
         qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER, NULL);
         s->vm_was_running = runstate_is_running();
-        ret = global_state_store();
 
+        ret = global_state_store();
         if (!ret) {
             bool inactivate = !migrate_colo_enabled();
             ret = vm_stop_force_state(RUN_STATE_FINISH_MIGRATE);
@@ -3092,6 +3098,7 @@ static MigIterateState migration_iteration_run(MigrationState *s)
         /* Just another iteration step */
         qemu_savevm_state_iterate(s->to_dst_file,
             s->state == MIGRATION_STATUS_POSTCOPY_ACTIVE);
+
     } else {
         trace_migration_thread_low_pending(pending_size);
         migration_completion(s);
@@ -3105,18 +3112,20 @@ static void migration_iteration_finish(MigrationState *s)
 {
     /* If we enabled cpu throttling for auto-converge, turn it off. */
     cpu_throttle_stop();
+	bool has_sgx = false;
+    PCMachineState *pcms = NULL;
 
     qemu_mutex_lock_iothread();
     switch (s->state) {
     case MIGRATION_STATUS_COMPLETED:
-        migration_calculate_complete(s);
-        runstate_set(RUN_STATE_POSTMIGRATE);
 
-        PCMachineState *pcms = PC_MACHINE(qdev_get_machine());
-		bool has_sgx = (pcms->sgx_epc != NULL);
+        pcms = PC_MACHINE(qdev_get_machine());
+		has_sgx = (pcms->sgx_epc != NULL);
 		printf("migration_thread: sgx_loadepc_state %d\n", has_sgx);
 		sgx_epc_postload( pcms->sgx_epc->sections[0] );
 
+        migration_calculate_complete(s);
+        runstate_set(RUN_STATE_POSTMIGRATE);
         break;
 
     case MIGRATION_STATUS_ACTIVE:

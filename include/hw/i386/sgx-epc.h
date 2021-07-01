@@ -13,6 +13,7 @@
 #define QEMU_SGX_EPC_H
 
 #include "sysemu/hostmem.h"
+#include "hw/virtio/virtio-serial.h"
 
 #define TYPE_SGX_EPC "sgx-epc"
 #define SGX_EPC(obj) \
@@ -42,6 +43,7 @@ typedef struct SGXEPCDevice {
     uint64_t addr;
     HostMemoryBackend *hostmem;
     char *port;
+	VirtIOSerialPort *mig_port;
 } SGXEPCDevice;
 
 /*

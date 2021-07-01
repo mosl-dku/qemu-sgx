@@ -57,56 +57,84 @@ static bool sgx_epc_needed(void *opaque)
 static char buffer[100];
 int sgx_epc_postload(void *opaque)
 {
-	int migration_socket;
-	struct sockaddr_un target_addr;
 	int ret;
-
-	SGXEPCDevice *epc_dev = opaque;
-
-	migration_socket = socket(AF_UNIX, SOCK_STREAM, 0);
-	if(migration_socket < 0) {
-		perror("socket creation failed \n");
-		return -1;
+	char *port_name = (char *)"vsgxer.migration.0";
+	VirtIOSerialPort *port = find_virtio_serialport_by_name(port_name);
+	if (port == NULL) {
+		perror("port not found");
 	}
-
-	memset(&target_addr, 0, sizeof(struct sockaddr_un));
-	target_addr.sun_family = AF_UNIX;
-	strncpy(target_addr.sun_path, epc_dev->port, sizeof(target_addr.sun_path)-1);
-	ret = connect(migration_socket, (const struct sockaddr *)&target_addr, sizeof(struct sockaddr_un));
-	if(ret < 0) {
-		perror("connect error");
-		return -1;
+	ret = virtio_serial_open(port);
+	if (ret < 0) {
+		perror("port open failed");
+	} else {
+		printf("LOG: virtio_serial_open (%d) \n", port->host_connected);
 	}
-
-	memset(&buffer, 0, sizeof(buffer));
+	memset(buffer, 0, sizeof(buffer));
 	sprintf(buffer, "%s", "MIGRATED\n");
-	ret = send(migration_socket, buffer, strlen(buffer) + 1, 0);
-	if(ret < 0) {
-		perror("send error");
-		return -1;
+
+	ret = virtio_serial_guest_ready(port);
+	if (ret <= 0) {
+		perror("virtio_guest_ready failed");
+	} else {
+		printf("LOG: virtio_guest_ready (%d) bytes remaining\n", ret);
 	}
 
-	close(migration_socket);
+	ret = virtio_serial_write(port, (const uint8_t *)buffer, strlen(buffer));
+	if (ret <= 0) {
+		perror("virtio_serial_write failed");
+	} else {
+		printf("LOG: virtio_serial_write (%d) \n", ret);
+	}
+
+	ret = virtio_serial_guest_ready(port);
+	if (ret <= 0) {
+		perror("virtio_guest_ready failed");
+	} else {
+		printf("LOG: virtio_guest_ready (%d) bytes remaining\n", ret);
+	}
+
+	virtio_serial_close(port);
+	printf("successfully sent %s (%ld) msg to guest via virtio_serial\n", buffer, strlen(buffer));
 
 	return 0;
 }
 
 int sgx_epc_early_save(void *opaque)
 {
+	int ret;
 	char *port_name = (char *)"vsgxer.migration.0";
 	VirtIOSerialPort *port = find_virtio_serialport_by_name(port_name);
 	if (port == NULL) {
 		perror("port not found");
 	}
-	int ret = virtio_serial_open(port);
+	ret = virtio_serial_open(port);
 	if (ret < 0) {
 		perror("port open failed");
+	} else {
+		printf("LOG: virtio_serial_open (%d) \n", port->host_connected);
 	}
 	memset(buffer, 0, sizeof(buffer));
 	sprintf(buffer, "%s", "MIGRATION\n");
+
+	ret = virtio_serial_guest_ready(port);
+	if (ret <= 0) {
+		perror("virtio_guest_ready failed");
+	} else {
+		printf("LOG: virtio_guest_ready (%d) bytes remaining\n", ret);
+	}
+
 	ret = virtio_serial_write(port, (const uint8_t *)buffer, strlen(buffer));
 	if (ret <= 0) {
-		perror("port write failed");
+		perror("virtio_serial_write failed");
+	} else {
+		printf("LOG: virtio_serial_write (%d) \n", ret);
+	}
+
+	ret = virtio_serial_guest_ready(port);
+	if (ret <= 0) {
+		perror("virtio_guest_ready failed");
+	} else {
+		printf("LOG: virtio_guest_ready (%d) bytes remaining\n", ret);
 	}
 
 	virtio_serial_close(port);

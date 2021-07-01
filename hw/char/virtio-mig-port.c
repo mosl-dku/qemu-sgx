@@ -272,7 +272,7 @@ static void mig_port_class_init(ObjectClass *klass, void *data)
     k->enable_backend = mig_enable_backend;
     k->guest_writable = guest_writable;
     dc->props = mig_port_properties;
-    k->is_console = false;
+    k->is_console = true;
 }
 
 static const TypeInfo mig_port_info = {
